@@ -6,6 +6,9 @@
 #include "SynapticsTool.h"
 #include "SynapticsToolDlg.h"
 #include "afxdialogex.h"
+#include "SDK\Include\SynKit.h"
+#include <string>
+#include <stdio.h>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -98,7 +101,75 @@ BOOL CSynapticsToolDlg::OnInitDialog()
 	SetIcon(m_hIcon, TRUE);			// Set big icon
 	SetIcon(m_hIcon, FALSE);		// Set small icon
 
-	// TODO: Add extra initialization here
+	// Synaptics API Initialization
+	ISynAPI *pAPI = 0;
+	HRESULT result = SynCreateAPI(&pAPI);
+	if (result)
+	{
+		printf("Cannot obtain an API object, error: %.8x.\n", result);
+		exit(-1);
+	}
+
+	// Test some API properties.
+	LONG lValue = 0;
+	result = pAPI->GetProperty(SP_Version, &lValue);
+
+	TBYTE tBuf[256];
+	long lBufLen = sizeof(tBuf);
+	result = pAPI->GetStringProperty(SP_VersionString, tBuf, &lBufLen);
+
+	// Update Version Info
+	CString API("API Version: "),APIVer;
+	APIVer.Format(_T("%.8x"), lValue);
+	GetDlgItem(IDC_APIVer)->SetWindowTextA(API+APIVer);
+	CString DriVer(tBuf);
+	GetDlgItem(IDC_DriverVer)->SetWindowTextA(DriVer);
+
+	// Find a device, preferentially a TouchPad or Styk.
+	ISynDevice *pDevice = 0;
+	LONG lHandle = -1;
+	if ((pAPI->FindDevice(SE_ConnectionAny, SE_DeviceTouchPad, &lHandle) &&
+		pAPI->FindDevice(SE_ConnectionAny, SE_DeviceStyk, &lHandle) &&
+		pAPI->FindDevice(SE_ConnectionAny, SE_DeviceAny, &lHandle)) ||
+		pAPI->CreateDevice(lHandle, &pDevice))
+	{
+		printf("Unable to find a Synaptics Device.\n");
+		exit(-1);
+	}
+
+	// Test some device properties.
+	result = pDevice->GetProperty(SP_Handle, &lValue);
+	result = pDevice->GetProperty(SP_DeviceType, &lValue);
+	CString DeviceType;
+	switch (lValue)
+	{
+	case(SE_DeviceUnknown) : DeviceType = "Unknown"; break;
+	case(SE_DeviceMouse) : DeviceType = "Relative Mode Mouse";	break;
+	case(SE_DeviceTouchPad) : DeviceType = "Synaptics TouchPad"; break;
+	case(SE_DeviceWheelMouse) : DeviceType = "Mouse (Scroll Wheel)"; break;
+	case(SE_DeviceIBMCompatibleStick) : DeviceType = "IBM Compatible (TrackPoint) Pointing Stick"; break;
+	case(SE_DeviceStyk) : DeviceType = "Synaptics TouchStyk"; break;
+	case(SE_DeviceFiveButtonWheelMouse) : DeviceType = "Five Button Mouse (Scroll Wheel)"; break;
+	case(SE_DevicecPad) : DeviceType = "Synaptics cPad"; break;
+	default: DeviceType = "Error"; break;
+	}
+	GetDlgItem(IDC_DeviceType)->SetWindowTextA("Found Device Type: "+DeviceType);
+	result = pDevice->GetProperty(SP_ConnectionType, &lValue);
+	CString ConnecttionType;
+	switch (lValue)
+	{
+	case(SE_ConnectionUnknown) : ConnecttionType = "Unknown"; break;
+	case(SE_ConnectionCOM) : ConnecttionType = "COM"; break;
+	case(SE_ConnectionPS2) : ConnecttionType = "PS2"; break;
+	case(SE_ConnectionUSB) : ConnecttionType = "USB"; break;
+	case(SE_ConnectionSMB) : ConnecttionType = "SMB"; break;
+	case(SE_ConnectionI2C) : ConnecttionType = "I2C"; break;
+	case(SE_ConnectionRMIHID) : ConnecttionType = "RMIHID"; break;
+	default: ConnecttionType = "Error"; break;
+	}
+	GetDlgItem(IDC_ConnecttionType)->SetWindowTextA("Connection Type: " + ConnecttionType);
+
+	//AfxMessageBox(_T(text));
 
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }

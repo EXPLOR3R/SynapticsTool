@@ -195,3 +195,7 @@ FakesAssemblies/
 # Visual Studio 6 workspace options file
 *.opt
 /Documentations
+/SDK/Samples
+/SDK/ReadC++.txt
+/SDK/ReadSynSDK.txt
+/SDK/Help
